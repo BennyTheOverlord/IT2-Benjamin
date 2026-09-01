@@ -36,19 +36,19 @@ poeng_datamaskin: int = 0
 uavgjort: int = 0
 
 while poeng_spiller < 3 and poeng_datamaskin < 3:
-    bruker_valg = input("Velg stein saks eller papir: ").lower()
+    bruker_valg = input("Velg stein saks eller papir: ").strip().lower()
     datamaskin_valg = random.choice(alternativ)
 
     if bruker_valg not in alternativ:
         print("Ugyldig svar")
-        break
+        continue
 
     if vant[bruker_valg] == datamaskin_valg:
         poeng_spiller = (poeng_spiller + 1)
         print("Du vant!")
 
     elif vant[datamaskin_valg] == bruker_valg:
-        datamaskin_valg = (poeng_datamaskin + 1)
+        poeng_datamaskin = (poeng_datamaskin + 1)
         print("Du tapte!")
 
     else: 
