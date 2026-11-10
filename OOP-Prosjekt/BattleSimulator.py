@@ -1,11 +1,126 @@
 import random
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+
+console = Console()
 
 Pokemons = [] #Kan være lurt å lagre i en dictionary senere
 
-# "Pokemon" klassen inneholder generelle egenskaper for overordnede pokemoner, samt funksjonen for å velge et angrep for en pokemon.
+#Grafikk delen
 
-player_turn = True
-opponent_turn = False
+class BattleUI:
+    def __init__(self):
+        self.console = Console()
+
+    def hp_bar(self, pokemon):
+        max_hp = 100
+        current_hp = max(0, pokemon.hp)
+
+        hp_percentage = current_hp / max_hp
+
+        if hp_percentage > 0.5:
+            color = "green"
+        elif hp_percentage > 0.2:
+            color = "yellow"
+        else:
+            color = "red"
+
+        bar_length = 25
+        filled = round(bar_length * hp_percentage)
+        empty = bar_length - filled
+
+        bar = Text()
+        bar.append("█" * filled, style=color) #Fikse farge senere??
+        bar.append("░" * empty, style="grey50")
+
+        return bar
+    
+    def show_pokemon(self, pokemon, title, color):
+        content = Text()
+
+        content.append(
+            f"{pokemon.name}\n",
+            style="bold white"
+        )
+
+        content.append_text(self.hp_bar(pokemon))
+
+        content.append(
+            f"\n{pokemon.hp}/100 HP",
+            style="white"
+        )
+
+        self.console.print(
+            Panel(
+                content,
+                title=title,
+                border_style=color
+            )
+        )
+
+    def show_battle(self, player, enemy, turn):
+        self.console.clear()
+
+        self.console.print(
+            Panel(
+                f"[bold cyan]POKEMON BATTLE[/bold cyan]\n"
+                f"Turn {turn}",
+                border_style="blue"
+            )
+        )
+
+        self.show_pokemon(
+            enemy,
+            "ENEMY POKEMON",
+            "red"
+        )
+
+        self.console.print(
+            "[bold yellow]          VS[/bold yellow]"
+        )
+
+        self.show_pokemon(
+            player,
+            "YOUR POKEMON",
+            "cyan"
+        )
+
+    def show_moves(self, pokemon):
+        table = Table(
+            title="AVAILABLE MOVES",
+            border_style="cyan"
+        )
+
+        table.add_column("Index", style="yellow")
+        table.add_column("Move", style="cyan")
+        table.add_column("Damage", style="red")
+
+        for index, (move, damage) in enumerate(
+            pokemon.pokemon_movepool.items()
+        ):
+            table.add_row(
+                str(index),
+                move,
+                str(damage)
+            )
+
+        self.console.print(table)
+
+    def message(self, text, color="white"):
+        self.console.print(
+            Panel(
+                text,
+                border_style=color
+            )
+        )
+
+ui = BattleUI()
+
+allow_switch = False
+
+# "Pokemon" klassen inneholder generelle egenskaper for overordnede pokemoner, samt funksjonen for å velge et angrep for en pokemon.
 
 class Pokemon:
     def __init__(self, name):
@@ -14,16 +129,15 @@ class Pokemon:
         self.pokemon_movepool = {
         "Watergun": 10,
         "Hydro pump": 20,
-
 }
         
     def is_alive(self):
         if self.hp > 0:
             return self.hp
 
-    def choose_attack(self):
+    def choose_attack(self): #Endre senere slik at den fortsetter selv ved feil inputs osv.
 
-        print(f"Now you have to choose an attack to use against your oppononent: {enemy_test.name}")
+        print(f"Now you have to choose an attack to use against your oppononent: {active_enemy.name}")
 
         for move_index, move in enumerate(self.pokemon_movepool):
             print(f"{move_index} - {move}")
@@ -62,9 +176,28 @@ class Enemy(Pokemon):
 
         return attack_damage
     
+enemy_team = [
+     Enemy("TestMotstander"),
+     Enemy("TestMotstander2"),
+     Enemy("TestMotstander3")
+]
+
+active_enemy = enemy_team[0]
+
+def choose_enemy_pokemon():
+    available_pokemon = []
+
+    for pokemon in enemy_team:
+        if pokemon.is_alive:
+            available_pokemon.append(pokemon)
+
+    if available_pokemon:
+        return random.choice(available_pokemon)
+        
+    return None
+    
 
 # Må gjerne lage flere mostandere på forhånd
-enemy_test = Enemy("TestMotstander")
 
 
 while True:
@@ -113,42 +246,80 @@ def choose_a_pokemon():
 
             if 0 <= pokemon_choice < len(Pokemons):
                 chosen_pokemon = Pokemons[pokemon_choice]
-                print(f"The pokemon you choose was: {chosen_pokemon.name}")
+                print(f"The pokemon you chose was: {chosen_pokemon.name}")
                 return chosen_pokemon
+                
             else:
                 print("Invalid pokemon index!")
                 break
         except (ValueError, IndexError):
             continue
 
-chosen_pokemon = choose_a_pokemon()
-
 def take_damage(pokemon, damage_number):
-    pokemon.hp -= damage_number
+    pokemon.hp = max(0, pokemon.hp - damage_number)
     
     print(f"{pokemon.name} took {damage_number} damage")
     print(f"{pokemon.name} now has {pokemon.hp} hp")
 
     return damage_number
 
-damage = chosen_pokemon.choose_attack()
-enemy_damage = enemy_test.enemy_move()
 
-take_damage(chosen_pokemon, enemy_damage) #Spillerens pokemon tar skade
+#Kommenter ut for nå!
 
-take_damage(enemy_test, damage) #Motstanderens pokemon tar skade
+# damage = chosen_pokemon.choose_attack()
+# enemy_damage = enemy_test.enemy_move()
+
+# take_damage(chosen_pokemon, enemy_damage) #Spillerens pokemon tar skade
+
+# take_damage(enemy_test, damage) #Motstanderens pokemon tar skade
     
 
 
-# Begynnelse på den turbaserte delen av spillet        
+# Begynnelse på den turbaserte delen av spillet
 
-while chosen_pokemon.hp > 0 and enemy_test.hp > 0:
+chosen_pokemon = choose_a_pokemon()
+
+player_turn = True
+
+while (
+    any(pokemon.is_alive() for pokemon in Pokemons) 
+    and any(pokemon.is_alive() for pokemon in enemy_team)
+):
+
     if player_turn:
-        chosen_pokemon = choose_a_pokemon
+        damage = chosen_pokemon.choose_attack()
+        take_damage(active_enemy, damage)
+        player_turn = False
 
+    else:
+        enemy_damage = active_enemy.enemy_move()
+        take_damage(chosen_pokemon, enemy_damage)
+        player_turn = True
 
+    if active_enemy.hp <= 0:
+        print(f"{active_enemy.name} has been deafeated!")
+        
+        if any(pokemon.is_alive() for pokemon in enemy_team):
+            active_enemy = choose_enemy_pokemon()
+        else:
+            print("All the enemies pokemon has been defeated. Thus you won the battle!")
+            break
+        
+    if chosen_pokemon.hp <= 0:
+        print(f"{chosen_pokemon.name} has been defeated!")
+        Pokemons.remove(chosen_pokemon)
+        allow_switch = True
+        
+        if any(pokemon.is_alive() for pokemon in Pokemons):
+            chosen_pokemon = choose_a_pokemon()
+        else:
+            print("All your pokemon has been defeatet. Thus you lost the battle")
+            break
 
+if allow_switch:
+    if len(Pokemons) > 0:
+        print("Choose a pokemon to switch to!")
+        for pokemon in Pokemons:
+            print(f"Name: {pokemon.name}\nHp: {pokemon.hp}")
 
-# for i in Pokemons:
-#      name_of_pokemon = i.name
-#      print(name_of_pokemon)
+        chosen_pokemon = choose_a_pokemon()
