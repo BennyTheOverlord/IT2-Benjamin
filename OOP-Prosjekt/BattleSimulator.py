@@ -133,34 +133,50 @@ class Pokemon:
         
     def is_alive(self):
         if self.hp > 0:
-            return self.hp
+            return self.hp > 0 #Ved å ha > 0 her vil den returnere en bolean istedenfor selve hp verdien
 
     def choose_attack(self): #Endre senere slik at den fortsetter selv ved feil inputs osv.
 
+        ui.show_moves(self) #Lager en tabell med tilgjengelige trekk og info om dem
+
         print(f"Now you have to choose an attack to use against your oppononent: {active_enemy.name}")
 
-        for move_index, move in enumerate(self.pokemon_movepool):
-            print(f"{move_index} - {move}")
+        # for move_index, move in enumerate(self.pokemon_movepool):
+        #     print(f"{move_index} - {move}")
 
         moves = list(self.pokemon_movepool.keys())
 
-        user_move_choice = int(input("Choose a move from the movepool "))
-        print(moves[user_move_choice])
+        while True:
+            try:
 
-        chosen_move = moves[user_move_choice]
-        damage_number = self.pokemon_movepool[chosen_move]
-        print(damage_number)
+                user_move_choice = int(input("Choose a move from the movepool "))
+                
+                if 0 <= user_move_choice < len(moves):
 
-        return damage_number
+                    print(moves[user_move_choice])
+
+                    chosen_move = moves[user_move_choice]
+                    damage_number = self.pokemon_movepool[chosen_move]
+
+                    ui.message( #Lager en boks med "cyan" farge som sier at objektet brukte det valgte trekket
+                    f"{self.name} used {chosen_move}! \n"
+                    f"Damage: {damage_number}",
+                    "cyan"
+                    )
+
+                    print(damage_number)
+
+                    return damage_number
+                else:
+                    console.print("[red]You have to choose an available move![/red]") 
+
+            except (ValueError, IndexError):
+                console.print("[red]Please choose a move with a valid index![/red]")
         
 
 class Enemy(Pokemon):
     def __init__(self, name):
         super().__init__(name)
-
-    def is_alive(self):
-        if self.hp > 0:
-            return self.hp
     
     def choose_target(self, target):
         return target
@@ -168,11 +184,16 @@ class Enemy(Pokemon):
     def enemy_move(self):
 
         moves = list(self.pokemon_movepool.keys())
+
         chosen_move = random.choice(moves)
 
         attack_damage = self.pokemon_movepool[chosen_move]
 
-        print(f"{self.name} used {chosen_move} and did {attack_damage} damage!")
+        ui.message(
+            f"{self.name} used {chosen_move}! \n"
+            f"Damage: {attack_damage}",
+            "red"
+        )
 
         return attack_damage
     
@@ -188,7 +209,7 @@ def choose_enemy_pokemon():
     available_pokemon = []
 
     for pokemon in enemy_team:
-        if pokemon.is_alive:
+        if pokemon.is_alive():
             available_pokemon.append(pokemon)
 
     if available_pokemon:
@@ -199,6 +220,20 @@ def choose_enemy_pokemon():
 
 # Må gjerne lage flere mostandere på forhånd
 
+def choose_action(): #Fullfør senere
+    try:
+        user_action = int(input("Choose an option: 0: Fight --- 1: Switch"))
+    
+        if user_action == 0:
+            return
+        elif user_action == 1:
+            chosen_pokemon = choose_a_pokemon
+
+    except (IndexError, ValueError):
+        ui.message(
+            "You have to choose a valid option! \n",
+            "red"
+        )
 
 while True:
     try:
@@ -236,7 +271,6 @@ show_status()
 def choose_a_pokemon():
     while True:
         try:
-
             print("Now you have to choose a pokemon to fight your opponent")
 
             for index, pokemon in enumerate(Pokemons):
@@ -251,15 +285,18 @@ def choose_a_pokemon():
                 
             else:
                 print("Invalid pokemon index!")
-                break
+                continue
         except (ValueError, IndexError):
             continue
 
 def take_damage(pokemon, damage_number):
     pokemon.hp = max(0, pokemon.hp - damage_number)
-    
-    print(f"{pokemon.name} took {damage_number} damage")
-    print(f"{pokemon.name} now has {pokemon.hp} hp")
+
+    ui.message(
+        f"{pokemon.name} took {damage_number} damage! \n"
+        f"Remanining HP: {pokemon.hp}",
+        "yellow"
+    )
 
     return damage_number
 
@@ -280,11 +317,18 @@ def take_damage(pokemon, damage_number):
 chosen_pokemon = choose_a_pokemon()
 
 player_turn = True
+turn = 1
 
 while (
     any(pokemon.is_alive() for pokemon in Pokemons) 
     and any(pokemon.is_alive() for pokemon in enemy_team)
 ):
+    
+    ui.show_battle(
+        chosen_pokemon,
+        active_enemy,
+        turn
+    )
 
     if player_turn:
         damage = chosen_pokemon.choose_attack()
@@ -295,14 +339,24 @@ while (
         enemy_damage = active_enemy.enemy_move()
         take_damage(chosen_pokemon, enemy_damage)
         player_turn = True
+        turn += 1
+        input("Press enter to continue..")
 
     if active_enemy.hp <= 0:
-        print(f"{active_enemy.name} has been deafeated!")
+
+        ui.message(
+            f"{active_enemy.name} has been defeated",
+            "green"
+        )
         
         if any(pokemon.is_alive() for pokemon in enemy_team):
             active_enemy = choose_enemy_pokemon()
         else:
-            print("All the enemies pokemon has been defeated. Thus you won the battle!")
+            ui.message(
+                f"All enemy pokemon has been defeated! \n"
+                "You win!!",
+                "green"
+            )
             break
         
     if chosen_pokemon.hp <= 0:
@@ -313,13 +367,16 @@ while (
         if any(pokemon.is_alive() for pokemon in Pokemons):
             chosen_pokemon = choose_a_pokemon()
         else:
-            print("All your pokemon has been defeatet. Thus you lost the battle")
+            ui.message(
+                "All your pokemon has been defeated \n"
+                "You lose!"
+            )
             break
 
-if allow_switch:
-    if len(Pokemons) > 0:
-        print("Choose a pokemon to switch to!")
-        for pokemon in Pokemons:
-            print(f"Name: {pokemon.name}\nHp: {pokemon.hp}")
+# if allow_switch:
+#     if len(Pokemons) > 0:
+#         print("Choose a pokemon to switch to!")
+#         for pokemon in Pokemons:
+#             print(f"Name: {pokemon.name}\nHp: {pokemon.hp}")
 
-        chosen_pokemon = choose_a_pokemon()
+#         chosen_pokemon = choose_a_pokemon()
