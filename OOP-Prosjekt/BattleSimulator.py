@@ -78,7 +78,7 @@ class BattleUI:
         )
 
         self.console.print(
-            "[bold yellow]          VS[/bold yellow]"
+            "[bold yellow] VS [/bold yellow]"
         )
 
         self.show_pokemon(
@@ -220,14 +220,16 @@ def choose_enemy_pokemon():
 
 # Må gjerne lage flere mostandere på forhånd
 
-def choose_action(): #Fullfør senere
+def choose_action():
     try:
-        user_action = int(input("Choose an option: 0: Fight --- 1: Switch"))
+        user_action = int(input("Choose an option: 0: Fight --- 1: Switch "))
     
         if user_action == 0:
-            return
+            return "fight"
+        
         elif user_action == 1:
-            chosen_pokemon = choose_a_pokemon
+          return "switch"
+          
 
     except (IndexError, ValueError):
         ui.message(
@@ -268,7 +270,7 @@ while True:
                 i += 1 
 show_status()
 
-def choose_a_pokemon():
+def choose_a_pokemon(current_pokemon=None):
     while True:
         try:
             print("Now you have to choose a pokemon to fight your opponent")
@@ -278,14 +280,21 @@ def choose_a_pokemon():
               
             pokemon_choice = int(input("Choose a pokemon! "))
 
-            if 0 <= pokemon_choice < len(Pokemons):
-                chosen_pokemon = Pokemons[pokemon_choice]
-                print(f"The pokemon you chose was: {chosen_pokemon.name}")
-                return chosen_pokemon
-                
-            else:
-                print("Invalid pokemon index!")
+            if Pokemons[pokemon_choice] == current_pokemon:
+                ui.message(
+                    f"{current_pokemon.name} is already battling!",
+                    "red"
+                )
                 continue
+            else:
+                if 0 <= pokemon_choice < len(Pokemons):
+                    chosen_pokemon = Pokemons[pokemon_choice]
+                    print(f"The pokemon you chose was: {chosen_pokemon.name}")
+                    return chosen_pokemon
+                
+                else:
+                    print("Invalid pokemon index!")
+                    continue
         except (ValueError, IndexError):
             continue
 
@@ -315,6 +324,7 @@ def take_damage(pokemon, damage_number):
 # Begynnelse på den turbaserte delen av spillet
 
 chosen_pokemon = choose_a_pokemon()
+current_pokemon = chosen_pokemon
 
 player_turn = True
 turn = 1
@@ -331,8 +341,20 @@ while (
     )
 
     if player_turn:
-        damage = chosen_pokemon.choose_attack()
-        take_damage(active_enemy, damage)
+
+        action = choose_action()
+
+        if action == "fight":
+            damage = chosen_pokemon.choose_attack()
+            take_damage(active_enemy, damage)
+
+        elif action == "switch":
+            chosen_pokemon = choose_a_pokemon(chosen_pokemon)
+            ui.message(
+                f"{chosen_pokemon.name} has been sent out!",
+                "green"
+            )
+
         player_turn = False
 
     else:
